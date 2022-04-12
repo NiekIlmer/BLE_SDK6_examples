@@ -1221,6 +1221,11 @@
               <FileType>1</FileType>
               <FilePath>..\src\user_security.c</FilePath>
             </File>
+            <File>
+              <FileName>lecb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\src\lecb.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -2440,6 +2445,11 @@
               <FileType>1</FileType>
               <FilePath>..\src\user_security.c</FilePath>
             </File>
+            <File>
+              <FileName>lecb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\src\lecb.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -3556,6 +3566,11 @@
               <FileName>user_security.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\src\user_security.c</FilePath>
+            </File>
+            <File>
+              <FileName>lecb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\src\lecb.c</FilePath>
             </File>
           </Files>
         </Group>

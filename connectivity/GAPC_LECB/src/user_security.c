@@ -36,11 +36,13 @@
 #include "app_task.h"
 #include "app_utils.h"
 #include "user_security.h"
+#include "lecb.h"
 
 #if defined (CFG_PRINTF)
 #include "arch_console.h"
 #endif
 
+uint8_t test_string[] = "Test message";
 
 /*
  * TYPE DEFINITIONS
@@ -64,6 +66,7 @@ struct mnf_specific_data_ad_structure
 uint8_t app_connection_idx                      __SECTION_ZERO("retention_mem_area0"); //@RETENTION MEMORY
 timer_hnd app_adv_data_update_timer_used        __SECTION_ZERO("retention_mem_area0"); //@RETENTION MEMORY
 timer_hnd app_param_update_request_timer_used   __SECTION_ZERO("retention_mem_area0"); //@RETENTION MEMORY
+lecb_conn lecb_connection_struct                __SECTION_ZERO("retention_mem_area0"); //@RETENTION MEMORY
 
 // Retained variables
 // Manufacturer Specific Data
@@ -251,16 +254,8 @@ void user_app_connection(uint8_t conidx, struct gapc_connection_req_ind const *p
     if (app_env[conidx].conidx != GAP_INVALID_CONIDX)
     {
         app_connection_idx = conidx;
-	
-	      struct gapc_lecb_create_cmd *req = KE_MSG_ALLOC(GAPC_LECB_CREATE_CMD,
-                    KE_BUILD_ID(TASK_GAPC, app_connection_idx), TASK_APP,
-                    gapc_lecb_create_cmd);
-        req->operation = GAPC_LE_CB_CREATE;
-        req->sec_lvl = 0;
-        req->le_psm = 0x82;
-        req->cid = 0x40;
-        req->intial_credit = 5;
-			  ke_msg_send(req);
+	      lecb_connection_struct.connection_id = conidx;
+			  LECB_create_channel(&lecb_connection_struct, 0x82, 0x40, 5);
 			
         // Stop the advertising data update timer
         app_easy_timer_cancel(app_adv_data_update_timer_used);
@@ -377,12 +372,12 @@ void user_app_on_tk_exch(uint8_t conidx,
 }
 #endif // (BLE_APP_SEC)
 
+
 void user_catch_rest_hndl(ke_msg_id_t const msgid,
                           void const *param,
                           ke_task_id_t const dest_id,
                           ke_task_id_t const src_id)
 {
-	arch_printf(" \r\n message: 0x%x, mask %x", msgid, ecdh_key.public_key.x[0]);
     switch(msgid)
     {
         case GAPC_PARAM_UPDATED_IND:
@@ -398,18 +393,38 @@ void user_catch_rest_hndl(ke_msg_id_t const msgid,
             {
             }
         } break;
+        case GAPC_CMP_EVT:
+				{
+	          struct gapc_cmp_evt const *gapc_cmp_evt = (struct gapc_cmp_evt const *)(param);
+	          arch_printf(" \r\n GAPC Command Complete event, Operation: 0x%x, Status: 0x%x", gapc_cmp_evt->operation, gapc_cmp_evt->status);				
+				} break;
         case GAPC_LECB_CONNECT_REQ_IND:
 				{
+	          struct gapc_lecb_connect_req_ind const *gapc_lecb_connect_req_ind = (struct gapc_lecb_connect_req_ind const *)(param);
+					  lecb_connection_struct.tx_credits = gapc_lecb_connect_req_ind->dest_credit;
+					  lecb_connection_struct.MPS = gapc_lecb_connect_req_ind->max_sdu;
+					  gapc_lecb_connect_req_handler(&lecb_connection_struct);
+	          arch_printf(" \r\n LECB connection request, PSM: 0x%x, Destination credit: 0x%x, max SDU: 0x%x and destination CID is 0x%x", gapc_lecb_connect_req_ind->le_psm, gapc_lecb_connect_req_ind->dest_credit, gapc_lecb_connect_req_ind->max_sdu, gapc_lecb_connect_req_ind->dest_cid);				
+				} break;
+        case GAPC_LECB_CONNECT_IND:
+				{
 	          struct gapc_lecb_connect_ind const *gapc_lecb_connect_ind = (struct gapc_lecb_connect_ind const *)(param);
-						struct gapc_lecb_connect_cfm *req = KE_MSG_ALLOC(GAPC_LECB_CONNECT_CFM,
-												KE_BUILD_ID(TASK_GAPC, app_connection_idx), TASK_APP,
-												gapc_lecb_connect_cfm);
-						
-						req->le_psm = gapc_lecb_connect_ind->le_psm;
-						req->status = L2C_CB_CON_SUCCESS;
-						ke_msg_send(req);					
+	          arch_printf(" \r\n LECB connection established, PSM: 0x%x, Destination credit: 0x%x, max SDU: 0x%x and destination CID is 0x%x", gapc_lecb_connect_ind->le_psm, gapc_lecb_connect_ind->dest_credit, gapc_lecb_connect_ind->max_sdu, gapc_lecb_connect_ind->dest_cid);				
+					  LECB_send_pdu(&lecb_connection_struct, test_string, sizeof(test_string));
+					  LECB_add_rx_credit(&lecb_connection_struct, 5);
+				} break;
+        case GAPC_LECB_DISCONNECT_IND:
+				{
+	          struct gapc_lecb_disconnect_ind const *gapc_lecb_disconnect_ind = (struct gapc_lecb_disconnect_ind const *)(param);
+	          arch_printf(" \r\n LECB connection disconnected, PSM: 0x%x, Reason: 0x%x", gapc_lecb_disconnect_ind->le_psm, gapc_lecb_disconnect_ind->reason);
+				} break;
+        case L2CC_PDU_SEND_RSP:
+				{
+	          struct l2cc_data_send_rsp const *l2cc_data_send_rsp = (struct l2cc_data_send_rsp const *)(param);
+					  arch_printf(" \r\n L2C data sent: Status: 0x%x, Destination credit: 0x%x, and destination CID is 0x%x", l2cc_data_send_rsp->status, l2cc_data_send_rsp->dest_credit, l2cc_data_send_rsp->dest_cid);
 				} break;
         default:
+	          arch_printf(" \r\n message: 0x%x, from 0x%x", msgid, src_id);
             break;
     }
 }
