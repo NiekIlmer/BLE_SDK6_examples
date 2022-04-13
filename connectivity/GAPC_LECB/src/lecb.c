@@ -37,20 +37,6 @@ void gapc_lecb_connect_req_handler(lecb_conn *connection){
 }
 
 void LECB_send_pdu(lecb_conn *connection, uint8_t* data, uint16_t length){
-    /*
-     * Calculate the length of the GTL message. We cannot simply use sizeof() since structure
-     * has union as one of its members and it does not give accurate value (allocated memory
-     * would be larger that what we need and we don't want to waste memory) - so just add the
-     * sizes of all relevant fields of the structure.
-     */
-    uint16_t size = sizeof(uint16_t) + // offset
-                    sizeof(uint16_t) + // payld_len
-                    sizeof(uint16_t) + // chan_id
-                    sizeof(uint16_t) + // code - this is uint8_t but structure is not packed so it's
-                                       //        aligned as uint16_t
-                    sizeof(uint16_t) + // sdu_data_len
-                    length;
-
 		struct l2cc_pdu_send_req *pkt = KE_MSG_ALLOC_DYN(L2CC_PDU_SEND_REQ,
                                                      KE_BUILD_ID(TASK_L2CC, connection->connection_id),
                                                      TASK_APP, l2cc_pdu_send_req,

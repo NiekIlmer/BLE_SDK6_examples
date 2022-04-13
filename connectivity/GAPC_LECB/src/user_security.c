@@ -26,6 +26,7 @@
 
 #include "rwip_config.h"             // SW configuration
 #include "gap.h"
+#include "gattc.h"
 #include "co_bt.h"
 #include "llm.h"
 #include "app.h"
@@ -42,7 +43,7 @@
 #include "arch_console.h"
 #endif
 
-uint8_t test_string[] = "Test message";
+uint8_t test_string[] = "Hi from 531!";
 
 /*
  * TYPE DEFINITIONS
@@ -401,6 +402,7 @@ void user_catch_rest_hndl(ke_msg_id_t const msgid,
         case GAPC_LECB_CONNECT_REQ_IND:
 				{
 	          struct gapc_lecb_connect_req_ind const *gapc_lecb_connect_req_ind = (struct gapc_lecb_connect_req_ind const *)(param);
+					  gattc_set_mtu(lecb_connection_struct.connection_id, 251);
 					  lecb_connection_struct.tx_credits = gapc_lecb_connect_req_ind->dest_credit;
 					  lecb_connection_struct.MPS = gapc_lecb_connect_req_ind->max_sdu;
 					  gapc_lecb_connect_req_handler(&lecb_connection_struct);
@@ -423,8 +425,22 @@ void user_catch_rest_hndl(ke_msg_id_t const msgid,
 	          struct l2cc_data_send_rsp const *l2cc_data_send_rsp = (struct l2cc_data_send_rsp const *)(param);
 					  arch_printf(" \r\n L2C data sent: Status: 0x%x, Destination credit: 0x%x, and destination CID is 0x%x", l2cc_data_send_rsp->status, l2cc_data_send_rsp->dest_credit, l2cc_data_send_rsp->dest_cid);
 				} break;
+        case L2CC_PDU_RECV_IND:
+				{
+	          struct l2cc_pdu_recv_ind const *l2cc_pdu_recv_ind = (struct l2cc_pdu_recv_ind const *)(param);
+					arch_printf(" \r\n L2C data received on channel 0x%x, Status: 0x%x, Offset: 0x%x, payload length: 0x%x remaining length: %d", l2cc_pdu_recv_ind->pdu.chan_id, l2cc_pdu_recv_ind->status, l2cc_pdu_recv_ind->offset, l2cc_pdu_recv_ind->pdu.payld_len, l2cc_pdu_recv_ind->rem_len);
+					arch_printf(" \r\n L2C data packet: %s", l2cc_pdu_recv_ind->pdu.data);
+				} break;
+        case L2CC_LECNX_DATA_RECV_IND:
+				{
+	          struct l2cc_lecnx_data_recv_ind const *l2cc_lecnx_data_recv_ind = (struct l2cc_lecnx_data_recv_ind const *)(param);
+					arch_printf(" \r\n L2C data received on channel 0x%x with a length of %d. The source has %d credits left. The message is: %s", l2cc_lecnx_data_recv_ind->src_cid, l2cc_lecnx_data_recv_ind->len, l2cc_lecnx_data_recv_ind->src_credit, l2cc_lecnx_data_recv_ind->data);
+					if (l2cc_lecnx_data_recv_ind->src_credit < 5){
+					  LECB_add_rx_credit(&lecb_connection_struct, 2);						
+					}
+				} break;
         default:
-	          arch_printf(" \r\n message: 0x%x, from 0x%x", msgid, src_id);
+	          arch_printf(" \r\n unhandled message: 0x%x, from 0x%x", msgid, src_id);
             break;
     }
 }
