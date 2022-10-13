@@ -302,7 +302,7 @@ static const struct gapm_configuration user_gapm_conf = {
 
     /// Maximal MTU. Shall be set to 23 if Legacy Pairing is used, 65 if Secure Connection is used,
     /// more if required by the application
-    .max_mtu = 65,
+    .max_mtu = 251,
 
     /// Device Address Type
     .addr_type = APP_CFG_ADDR_TYPE(USER_CFG_ADDRESS_MODE),
@@ -356,7 +356,7 @@ static const struct gapm_configuration user_gapm_conf = {
      */
 
     /// Maximal MPS
-    .max_mps = 0,
+    .max_mps = 251,
 
     /// Maximal Tx octets (connInitialMaxTxOctets value, as defined in 4.2 Specification)
     .max_txoctets = 251,
